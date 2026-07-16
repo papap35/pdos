@@ -9,7 +9,7 @@
 | 事件記憶（impact × relevance × unique 自動算重要性） | ✅ 新增、時間軸呈現；⚠️ 無編輯／刪除／篩選 |
 | 決策工作台（維持現況／準備後行動／立即行動 三選項比較） | ✅ 依權重排序、自動產生 90 天驗證行動；⚠️ 結果不留存 |
 | 行動引擎（90 天行動計畫） | ✅ 新增、依分數排序、勾選完成；⚠️ 無編輯／刪除 |
-| 匯出／匯入 JSON 備份 | ✅ 匯出正常；⚠️ 匯入沒有結構驗證（見 P0-1） |
+| 匯出／匯入 JSON 備份 | ✅ 匯出正常；✅ 匯入已做結構驗證（見 P0-1） |
 | 重設示範資料 | ✅ |
 | 部署 | ✅ GitHub Actions → GitHub Pages（push main 自動部署） |
 | 測試 / Lint | ❌ 無（見 AGENTS.md 2.1，技術債） |
@@ -20,7 +20,7 @@
 
 ### P0 — 資料安全性（必做，理由：唯一已知會實際造成資料遺失/白畫面的路徑）
 
-#### 1. 匯入資料格式驗證 `[ ]`
+#### 1. 匯入資料格式驗證 `[x]`
 
 **背景**：目前匯入（`import-input` 的 onchange handler）只用 `try/catch` 擋
 `JSON.parse` 失敗的情況。如果匯入的 JSON **格式正確但結構不完整**（例如缺少
@@ -33,6 +33,13 @@
   且各自的必要欄位存在
 - 驗證失敗時 `alert` 提示並**保留原本的 `data`**，不寫入 `localStorage`
 - 涉及檔案：`app.js`（`import-input` 的 `onchange` handler）
+
+**實作備註**：新增純函式 `isValidData(d)`（放在 `esc`/`formatDate` 旁邊，屬於
+③ 純函式 helper 區塊），檢查 `profile.weights` 四個權重皆為有限數字、
+`goals`/`events`/`actions` 皆為陣列且每筆項目具備必要欄位與型別。`onchange`
+handler 先 `JSON.parse`，成功後才跑 `isValidData`，兩關都沒過就 `alert` 並
+直接 `return`，不呼叫 `save()`。已用 Playwright 手動驗證：損毀 JSON、格式正確
+但缺 `actions` 欄位的 JSON、完整備份檔三種情境，前兩者都不會覆蓋既有資料。
 
 **優先級理由**：符合「資料正確性 / 避免坑使用者」的 P0 判準，是目前唯一會讓
 使用者實際弄丟資料的已知路徑。
