@@ -29,3 +29,9 @@ python -m http.server 8080
 ## 下一階段
 
 若要依系統規格擴展至生產版，可將 `app.js` 的資料服務換為 Fastify + PostgreSQL/pgvector，並為 Career、Finance、Health、Research 與 Reflection agent 加入 LLM gateway 與工作流程編排。
+
+## 開發文件
+
+- [`AGENTS.md`](./AGENTS.md)：開發規範（架構限制、驗證清單、commit/PR 流程）
+- [`SPEC.md`](./SPEC.md)：功能規格與路線圖
+- [`AI_PROJECT_SOP.md`](./AI_PROJECT_SOP.md)：AI 協作開發 SOP（通用範本）
