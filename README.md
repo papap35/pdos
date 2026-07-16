@@ -12,6 +12,17 @@ python -m http.server 8080
 
 然後開啟 `http://localhost:8080`。
 
+網站本身（`index.html`/`app.js`/`styles.css`/`lib/`）沒有 build step，直接就是
+最終產物；`package.json` 只用來裝開發期的測試／lint 工具，不影響網站怎麼載入。
+
+## 開發（測試／Lint）
+
+```bash
+npm install
+npm test   # Vitest，只測 lib/pure.js 裡的純函式
+npm run lint
+```
+
 ## 功能
 
 - 個人決策設定檔：人生價值與決策權重
