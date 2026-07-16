@@ -22,32 +22,46 @@
 
 ### 1.1 目前的架構限制（誠實揭露）
 
-這是一個**沒有 build step 的純靜態網站**：`index.html` + `app.js` + `styles.css`
-三個檔案，沒有 npm/webpack/vite，沒有 `package.json`，瀏覽器直接執行。修改時：
+**網站本身**（`index.html` + `app.js` + `styles.css` + `lib/pure.js`）是**沒有
+build step 的純靜態網站**，瀏覽器直接執行 `<script>` 標籤，可以直接雙擊
+`index.html` 開啟，不需要伺服器。`package.json`／`node_modules` 只用來裝
+**開發期**的測試（Vitest）與 lint（ESLint）工具，不影響網站怎麼被載入、也
+不會把網站本身變成需要 build 的專案——這條界線很重要，修改時：
 
-- **不要引入需要編譯或打包的語法**（TypeScript、JSX、跨檔案 `import`/`export`
-  等），除非同時把建置工具一起導入，並先跟使用者確認要不要承擔這個複雜度。
-- 若真的要拆檔，只能用瀏覽器原生 ES modules（`<script type="module">` +
-  `import`/`export`），且要同步更新 `index.html` 的 `<script>` 標籤與相對路徑，
-  不能假裝有 bundler 幫忙解析。
+- **不要為了網站本身引入需要編譯或打包的語法**（TypeScript、JSX、跨檔案
+  `import`/`export` 等），除非先跟使用者確認要不要讓網站也吃下這個複雜度。
+- `lib/pure.js` 是唯一的例外：它用 UMD 風格包裝（見 1.2），同時支援瀏覽器
+  `<script>` 全域變數與 Node/Vitest 的 `import`／`require`，藉此讓 `app.js`
+  維持純 `<script>`、不需要 `type="module"`，同時讓純函式可以被單元測試。
+  新增這類「雙軌相容」檔案時比照這個模式，不要另外發明新寫法。
+- 若之後真的要讓網站本身也上 build 工具（bundler、TS 等），那是比這更大的
+  架構決定，動工前必須先跟使用者確認。
 
-### 1.2 `app.js` 內的職責分區（新程式碼比照放置）
-
-檔案目前由上到下依此順序組織，新增函式時歸類到對應區塊，不要混雜：
+### 1.2 檔案職責分區（新程式碼比照放置）
 
 ```
-① 常數與 seed 示範資料（STORAGE, categories, colors, seed）
-② 持久化（load / save）
-③ 純函式 helper（id / score / esc / formatDate）—— 無副作用、只依賴輸入參數
-④ 渲染函式（renderOverview / renderGoals / renderEvents / renderActions ...）
-⑤ 互動邏輯（openModal、表單 submit、analyze 決策引擎）
-⑥ 事件綁定（檔案最底部，統一 addEventListener/onclick）
+lib/pure.js   純函式 helper（score / esc / formatDate / isValidData /
+              migrateActionGoals）—— 無副作用、只依賴輸入參數、不碰 DOM／
+              localStorage。用 UMD 包裝同時掛到 window 全域（瀏覽器）與
+              module.exports（Vitest 測試用），對應的單元測試放在
+              lib/pure.test.js。
+lib/pure.test.js  Vitest 測試，只測 lib/pure.js 的純函式，不做 DOM／整合測試。
+app.js        由上到下依此順序組織，新增函式時歸類到對應區塊，不要混雜：
+  ① 常數與 seed 示範資料（STORAGE, categories, colors, seed）
+  ② 持久化（load / save，依賴 lib/pure.js 的 isValidData / migrateActionGoals）
+  ③ 其他 helper（id 等——注意 score/esc/formatDate 等純函式已搬進
+     lib/pure.js，不要在 app.js 裡重複定義）
+  ④ 渲染函式（renderOverview / renderGoals / renderEvents / renderActions ...）
+  ⑤ 互動邏輯（openModal、表單 submit、analyze 決策引擎）
+  ⑥ 事件綁定（檔案最底部，統一 addEventListener/onclick）
 ```
 
-- **資料推導邏輯（分數、嚴重度、重要性計算）必須是獨立純函式**（比照
-  `score(a)`），不要寫進渲染函式裡——這樣之後才有機會補單元測試，也方便手動
-  驗證邊界值。
+- **新的資料推導邏輯（分數、嚴重度、重要性計算之類）如果無副作用、不碰
+  DOM，優先寫進 `lib/pure.js` 並補測試**；只有真的需要讀寫 `data`／DOM
+  的邏輯才留在 `app.js`。
 - 渲染函式只負責「資料 → HTML 字串」，不要在裡面做資料篩選以外的業務運算。
+- `index.html` 載入順序固定是 `lib/pure.js` 先於 `app.js`（`app.js` 直接呼叫
+  `score`/`esc` 等全域函式，順序顛倒會噴 `ReferenceError`）。
 
 ### 1.3 XSS 防禦（硬性規則）
 
@@ -85,20 +99,31 @@
 
 ## 2. 測試與驗證的原則
 
-### 2.1 現況（誠實揭露，非理想狀態）
+### 2.1 現況
 
-目前**完全沒有自動化測試框架、沒有 lint 設定、沒有 `package.json`**。驗證方式
-是手動在瀏覽器操作：
+`lib/pure.js` 的純函式有 Vitest 單元測試（`lib/pure.test.js`），並有 ESLint
+（flat config，`eslint.config.mjs`）做基本靜態檢查；`.github/workflows/ci.yml`
+在每個 PR 上自動跑 `npm run lint` + `npm test`。**但 `app.js` 裡的渲染／互動
+邏輯（DOM 操作、`localStorage`、modal 表單）完全沒有自動化測試**，這部分仍然
+靠瀏覽器手動操作驗證：
 
 ```bash
-# 直接雙擊開啟 index.html，或起一個本機伺服器：
+npm install        # 第一次或 package.json 變動後執行
+npm test            # Vitest，跑 lib/pure.js 的單元測試
+npm run lint         # ESLint
+
+# 手動驗證 app.js 的 DOM/互動邏輯（擇一開啟頁面）：
+# 1. 直接雙擊開啟 index.html
+# 2. 或起一個本機伺服器：
 python -m http.server 8080
 # 開啟 http://localhost:8080
 ```
 
-### 2.2 每次 commit / PR 前必須手動確認
+### 2.2 每次 commit / PR 前必須確認
 
 ```
+□ npm test 通過（lib/pure.js 的單元測試）
+□ npm run lint 通過（0 error；warning 需說明或修掉）
 □ 開啟瀏覽器 Console，操作過程中沒有出現任何錯誤訊息
 □ 五個視圖（今日狀態／目標系統／事件記憶／決策工作台／行動引擎）都能正常切換與渲染
 □ 新增目標／記錄事件／新增行動／編輯決策設定檔，四個 modal 都能正常送出並即時反映在畫面上
@@ -109,17 +134,16 @@ python -m http.server 8080
 □ light 環境下文字對比、按鈕可讀性正常（目前只有單一淺色主題，無 dark mode）
 ```
 
-### 2.3 技術債：補自動化測試
+### 2.3 補測試的原則
 
-`score()`、`esc()`、`formatDate()`、`analyze()` 裡的評分公式都是輸入輸出明確、
-無副作用（或副作用可隔離）的邏輯，是最適合優先補測試的對象。**尚未實作前，
-新增/修改這類函式時至少要手動驗證邊界值**（0、負數、超過權重上限、空字串、
-`effort=0` 導致除以 0 等情況）。
-
-若之後要導入測試框架，建議 Vitest + `@testing-library/dom` 或 `jsdom`（因為部分
-函式會操作 DOM）；同時可以考慮加入 ESLint（flat config）做基本靜態檢查，但
-兩者都需要先引入 `package.json` 與 Node 工具鏈，屬於架構變更，需先在 SPEC.md
-開項目確認。
+- `lib/pure.js` 裡的函式（輸入輸出明確、無副作用）**新增或修改時必須同步補
+  `lib/pure.test.js`**，含邊界值（0、負數、NaN、空字串、找不到對應資料等）。
+- 純函式如果會被 `app.js` 用到，優先放進 `lib/pure.js` 讓它可以被測試，不要
+  寫回 `app.js`（見 1.2）。
+- `app.js` 裡真的離不開 DOM／`localStorage` 的邏輯，目前沒有自動化測試框架
+  覆蓋，改動這類邏輯時**至少要照 2.2 的清單手動驗證邊界情況**（例如空清單、
+  唯一一筆資料被刪除後的畫面）。之後若要幫這塊補瀏覽器層級的測試（例如
+  Playwright），是新的技術債項目，需要先在 SPEC.md 開項目確認範圍。
 
 ---
 
@@ -155,8 +179,9 @@ python -m http.server 8080
 
 > ⚠️ **這個 repo 的 `main` 一 push 就會透過 GitHub Actions 自動部署到 GitHub
 > Pages**（`.github/workflows/deploy.yml`），**沒有 staging 環境**——merge 等於
-> 上線。因為沒有自動化測試把關，PR 前的自我 review（3.5）與手動驗證清單（2.2）
-> 是唯一的安全網，不可以跳過。
+> 上線。`.github/workflows/ci.yml` 會在每個 PR 上跑 `lib/pure.js` 的單元測試與
+> lint，但 `app.js` 的 DOM／互動邏輯不在覆蓋範圍內，PR 前的自我 review（3.5）
+> 與手動驗證清單（2.2）仍然是這部分的唯一安全網，不可以跳過。
 >
 > ⚠️ **PR 一律開向 `main`**。若發現 `main` 上沒有你預期的最新內容，先
 > `git fetch origin main` 確認，再從 `origin/main` 重新分支。
@@ -177,7 +202,7 @@ git diff origin/main...HEAD
 □ 所有改動都是本次需求的範疇，沒有夾帶不相關的修改
 □ 沒有 console.log 除錯碼遺留
 □ 新的使用者輸入欄位有經過 esc()／數字轉型（見 1.3）
-□ 已依 2.2 清單手動驗證過
+□ npm test / npm run lint 通過，且已依 2.2 清單手動驗證過
 □ SPEC.md 狀態已同步更新
 ```
 
@@ -218,6 +243,7 @@ git diff origin/main...HEAD
 - 做了什麼（列點）、為什麼
 
 ## Test plan
+- [ ] npm test / npm run lint 通過
 - [ ] 依 2.2 清單手動驗證（列出實際驗證過的項目）
 
 ## 已知風險 / 後續待辦
@@ -264,6 +290,7 @@ chore(deploy): 調整 GitHub Pages 部署 workflow
 ### 4.3 commit 前檢查清單
 
 ```
+□ npm test / npm run lint 通過
 □ 已依 2.2 清單手動驗證
 □ 沒有 console.log 除錯碼遺留
 □ 使用者輸入字串已用 esc() 處理，數字欄位已轉型
@@ -273,8 +300,8 @@ chore(deploy): 調整 GitHub Pages 部署 workflow
 
 ### 4.4 不應該 commit 的東西
 
+- `node_modules/`、`.env` 等（已在 `.gitignore`）
 - 任何暫時的測試用 `console.log`
-- 若未來引入 Node 工具鏈：`node_modules/`、`.env` 等（屆時需補 `.gitignore`）
 
 ---
 
@@ -334,23 +361,33 @@ chore(deploy): 調整 GitHub Pages 部署 workflow
 ## 附錄：專案技術棧速查
 
 ```
-框架：無（Vanilla HTML5 + CSS3 + ES6 JavaScript，無 build step）
+網站框架：無（Vanilla HTML5 + CSS3 + ES6 JavaScript，無 build step；
+         index.html/app.js/styles.css/lib/pure.js 可直接雙擊開啟）
 狀態管理：單一全域物件 data，持久化於 localStorage（key: pdos-v1）
-建置工具：無（沒有 npm/package.json，瀏覽器直接執行 <script> 標籤）
-測試：目前無自動化測試框架（見 2.1），驗證靠瀏覽器手動操作（見 2.2 清單）
-Lint：無
-CI/CD：GitHub Actions（.github/workflows/deploy.yml）——push 到 main 即自動部署
+純函式層：lib/pure.js（UMD 包裝，同時支援瀏覽器全域與 Node/Vitest import）
+開發工具：npm/package.json（僅供測試與 lint，不影響網站本身怎麼載入）
+測試：Vitest（lib/pure.test.js，只測 lib/pure.js 的純函式；app.js 的 DOM/
+     互動邏輯仍靠手動驗證，見 2.2 清單）
+Lint：ESLint 9（flat config，eslint.config.mjs）
+CI/CD：GitHub Actions
+  - .github/workflows/ci.yml：PR 上跑 npm run lint + npm test
+  - .github/workflows/deploy.yml：push 到 main 即自動部署 GitHub Pages
 部署：GitHub Pages（無 staging，merge 到 main 等於上線）
 ```
 
 ## 附錄：常用指令
 
 ```bash
-# 本機開發（擇一）
+# 本機開發（擇一開啟頁面）
 # 1. 直接用瀏覽器開啟 index.html
 # 2. 或起一個本機伺服器：
 python -m http.server 8080
 # 開啟 http://localhost:8080
+
+# 測試與 lint
+npm install
+npm test
+npm run lint
 
 # 部署
 git push origin main   # 觸發 GitHub Actions 自動部署到 GitHub Pages

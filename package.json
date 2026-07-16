@@ -1,0 +1,17 @@
+{
+  "name": "pdos",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Personal Decision Operating System — static front end (no build step), plus dev-only test/lint tooling.",
+  "scripts": {
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "lint": "eslint ."
+  },
+  "license": "ISC",
+  "devDependencies": {
+    "eslint": "^10.7.0",
+    "globals": "^17.7.0",
+    "vitest": "^4.1.10"
+  }
+}
