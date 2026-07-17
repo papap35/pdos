@@ -1,0 +1,13 @@
+name = "pdos-llm-proxy"
+main = "src/worker.js"
+compatibility_date = "2026-01-01"
+compatibility_flags = ["nodejs_compat"]
+
+# Secrets (never put these here — set via `wrangler secret put <NAME>`):
+#   PROXY_SECRET       shared secret pdos sends in the X-Proxy-Secret header
+#   ANTHROPIC_API_KEY  your Claude API key
+#
+# Optional plain vars (safe to set here or via `wrangler deploy --var`):
+# [vars]
+# ANTHROPIC_MODEL = "claude-opus-4-8"
+# ALLOWED_ORIGIN = "https://<your-username>.github.io"

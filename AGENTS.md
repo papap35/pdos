@@ -87,13 +87,34 @@ app.js        由上到下依此順序組織，新增函式時歸類到對應區
 
 ### 1.5 邊界與範圍限制
 
-- 這是**本機優先、無後端**的 MVP（README 明定：無雲端同步、無 AI API 呼叫）。
-  **不要主動加入任何對外部 API 的 `fetch` 呼叫**——若使用者要求新增這類功能，
-  先在 SPEC.md 開一個獨立項目並確認範圍，不要在其他功能的 PR 裡夾帶。
-- README「下一階段」提到的 Fastify + PostgreSQL/pgvector 後端與多個 LLM
-  agent（Career/Finance/Health/Research/Reflection）是**長期方向、非目前
-  範疇**，屬於架構等級的重大變更，動工前必須先有獨立的 SPEC.md 項目與使用者
-  確認，不可以在一般功能 PR 中順手做。
+- 這是**本機優先、無後端、無帳號系統**的 MVP：所有決策資料只存在 `localStorage`。
+  **唯一的例外**是選配的「AI 反思建議」（見 1.6）——除此之外**不要主動加入任何
+  對外部 API 的 `fetch` 呼叫**，若使用者要求新增這類功能，先在 SPEC.md 開一個
+  獨立項目並確認範圍，不要在其他功能的 PR 裡夾帶。
+- SPEC.md P4+-7 已經把後端化／多 agent 的完整路線圖與目前的決策記錄下來：
+  單人自用不需要 Postgres 後端（7.1）或帳號系統（7.2 已簡化成共用密鑰），
+  Claude 代理（7.4）+ Reflection agent（7.5 第一個 pilot）已經做完；
+  Career/Finance/Health/Research agent、語意搜尋（7.3）、工作流程編排（7.6）、
+  多裝置同步都**建議暫緩**，理由見 SPEC.md「AI 評估建議」。新增下一個 agent
+  或恢復 7.1/7.3 前，先在 SPEC.md 確認範圍，不可以在一般功能 PR 中順手做。
+
+### 1.6 `llm-proxy/`：一個獨立的 Cloudflare Worker，不是網站本身的一部分
+
+- `llm-proxy/` 是一個**獨立部署的 serverless 服務**，唯一工作是安全轉發 Claude
+  API 呼叫（金鑰不能放進公開的 GitHub Pages 前端）。它有自己的 `package.json`／
+  `wrangler.toml`，用 `npx wrangler deploy` 單獨部署，跟 pdos 網站本身的
+  GitHub Pages 部署完全分開——**不要**把它的依賴或程式碼混進根目錄的
+  `package.json`／`app.js`。
+- 根目錄 ESLint（`eslint.config.mjs`）刻意排除 `llm-proxy/**`；那個目錄有自己
+  的 Cloudflare Workers 執行環境（`fetch`/`Response`/`env` 等全域變數跟瀏覽器
+  或 Node 都不一樣），不適用 `app.js`/`lib/pure.js` 的瀏覽器全域設定。
+- 前端（`app.js` 的 `callLlmProxy()`）透過 `fetch` 呼叫使用者自己部署的
+  proxy 網址，帶一組存在 `localStorage`（key: `pdos-llm-config`，**不是**
+  `pdos-v1`）的共用密鑰。**這組設定刻意跟 `data` 分開存放**，確保「匯出資料」
+  產生的 JSON 備份檔絕對不會包含密鑰——修改匯出/匯入邏輯時要保持這個邊界。
+- 呼叫 Claude API 相關的程式碼變更，一律先讀過 `claude-api` skill（如果環境
+  提供的話）確認目前的 model ID／request 格式／錯誤處理慣例，不要憑訓練資料
+  的記憶亂猜——這塊 API 變動很快。
 
 ---
 
@@ -373,6 +394,12 @@ CI/CD：GitHub Actions
   - .github/workflows/ci.yml：PR 上跑 npm run lint + npm test
   - .github/workflows/deploy.yml：push 到 main 即自動部署 GitHub Pages
 部署：GitHub Pages（無 staging，merge 到 main 等於上線）
+
+【選配、獨立部署】llm-proxy/：Claude API 代理
+  框架：Cloudflare Workers（@anthropic-ai/sdk，見 llm-proxy/package.json）
+  部署：npx wrangler deploy（llm-proxy 目錄內，跟 GitHub Pages 完全分開）
+  設定：wrangler secret（PROXY_SECRET／ANTHROPIC_API_KEY），不進版控
+  詳見 llm-proxy/README.md
 ```
 
 ## 附錄：常用指令
