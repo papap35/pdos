@@ -2,7 +2,7 @@ import globals from 'globals';
 
 export default [
   {
-    ignores: ['node_modules/**'],
+    ignores: ['node_modules/**', 'llm-proxy/**'],
   },
   {
     files: ['app.js', 'lib/pure.js'],
@@ -17,6 +17,7 @@ export default [
         formatDate: 'readonly',
         isValidData: 'readonly',
         migrateActionGoals: 'readonly',
+        buildReflectionPrompt: 'readonly',
       },
     },
     rules: {

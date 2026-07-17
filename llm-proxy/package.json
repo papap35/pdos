@@ -1,0 +1,17 @@
+{
+  "name": "pdos-llm-proxy",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Minimal Cloudflare Worker that proxies Claude API calls for pdos, keeping the Anthropic API key off the public GitHub Pages site.",
+  "type": "module",
+  "scripts": {
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.112.1"
+  },
+  "devDependencies": {
+    "wrangler": "^4.111.0"
+  }
+}

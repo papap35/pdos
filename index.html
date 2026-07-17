@@ -16,7 +16,7 @@
       <button class="nav-item" data-view="decision"><span>◇</span> 決策工作台</button>
       <button class="nav-item" data-view="actions"><span>✓</span> 行動引擎</button>
     </nav>
-    <div class="sidebar-bottom"><button class="text-button" id="export-btn">匯出資料</button><label class="text-button import-label">匯入資料<input id="import-input" type="file" accept="application/json" /></label><button class="text-button danger" id="reset-btn">重設示範資料</button></div>
+    <div class="sidebar-bottom"><button class="text-button" id="llm-settings-open">AI 設定</button><button class="text-button" id="export-btn">匯出資料</button><label class="text-button import-label">匯入資料<input id="import-input" type="file" accept="application/json" /></label><button class="text-button danger" id="reset-btn">重設示範資料</button></div>
   </aside>
 
   <main>
@@ -26,7 +26,7 @@
       <div class="hero"><div><p class="eyebrow">你的個人決策作業系統</p><h2 id="welcome">讓每一個選擇，與你想成為的人一致。</h2><p>把目標、經驗與下一步放在同一個地方。系統提供建議；最後的決定永遠在你手上。</p></div><button class="primary" data-go="decision">開始一項決策 <span>→</span></button></div>
       <div class="metrics" id="metrics"></div>
       <div class="two-col"><article class="panel"><div class="panel-heading"><div><p class="eyebrow">焦點目標</p><h3>最值得投入的方向</h3></div><button class="link-button" data-go="goals">管理目標</button></div><div id="focus-goals" class="stack"></div></article><article class="panel"><div class="panel-heading"><div><p class="eyebrow">下一個高槓桿行動</p><h3>把策略變成進度</h3></div><button class="link-button" data-go="actions">查看全部</button></div><div id="next-actions" class="stack"></div></article></div>
-      <article class="panel insight"><div class="insight-icon">✦</div><div><p class="eyebrow">反思提醒</p><h3 id="reflection-title">先蒐集證據，再做不可逆的決定。</h3><p id="reflection-text">記錄一件讓你猶豫的事，PDOS 會把它放回目標與限制條件中檢視。</p></div></article>
+      <article class="panel insight"><div class="insight-icon">✦</div><div><p class="eyebrow">反思提醒</p><h3 id="reflection-title">先蒐集證據，再做不可逆的決定。</h3><p id="reflection-text">記錄一件讓你猶豫的事，PDOS 會把它放回目標與限制條件中檢視。</p><button type="button" class="link-button" id="ai-reflect-btn">🤖 用 AI 重新生成反思</button><p class="ai-reflect-status" id="ai-reflect-status"></p></div></article>
     </section>
 
     <section class="view" id="goals"><div class="section-heading"><div><p class="eyebrow">Goal Management</p><h2>目標系統</h2><p>用優先度與期限，讓注意力回到真正重要的方向。</p></div><button class="primary" id="goal-open">新增目標</button></div><div class="filter-row" id="goal-filters"></div><div id="goals-list" class="cards"></div></section>
